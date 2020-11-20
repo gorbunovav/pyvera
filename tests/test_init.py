@@ -63,7 +63,8 @@ def test_controller_refresh_data(vera_controller_data: VeraControllerData) -> No
 # pylint: disable=protected-access
 def test__event_device_for_vera_lock_status() -> None:
     """Test function."""
-    registry = SubscriptionRegistry(MagicMock(spec=VeraController))
+    registry = SubscriptionRegistry()
+    registry.set_controller(MagicMock(spec=VeraController))
     mock_lock = MagicMock(spec=VeraLock)
     mock_lock.name = MagicMock(return_value="MyTestDeadbolt")
 
@@ -148,6 +149,22 @@ def test_polling(vera_controller_data: VeraControllerData) -> None:
     callback_mock.assert_not_called()
     time.sleep(1)
     callback_mock.assert_called_with(device)
+
+
+def test_controller_custom_subscription_registry() -> None:
+    """Test function."""
+
+    class CustomSubscriptionRegistry(pyvera.AbstractSubscriptionRegistry):
+        """Test registry."""
+
+        def start(self) -> None:
+            """Start the polling."""
+
+        def stop(self) -> None:
+            """Stop the polling."""
+
+    controller = VeraController("URL", CustomSubscriptionRegistry())
+    assert controller.subscription_registry.get_controller() == controller
 
 
 def test_controller_register_unregister(
@@ -317,16 +334,19 @@ def test_dimmer(vera_controller_data: VeraControllerData) -> None:
 
     device.switch_on()
     assert device.is_switched_on() is True
-    assert device.get_brightness() == 255
 
     device.set_brightness(66)
+    assert device.get_brightness() == 66
+
+    device.switch_off()
+    device.switch_on()
     assert device.get_brightness() == 66
 
     device.set_color([120, 130, 140])
     assert device.get_color() == [120, 130, 140]
 
     device.switch_off()
-    assert device.get_brightness() == 0
+    assert device.is_switched_on() is False
 
 
 def test_scene_controller(vera_controller_data: VeraControllerData) -> None:
